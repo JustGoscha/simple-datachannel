@@ -1,8 +1,8 @@
 simple-datachannel
 ==================
 
-A simple WebRTC datachannel establishment demo
-The description you in [my blog post][blog] 
+A simple WebRTC datachannel establishment demo.
+The explanation you can find in [my blog post][blog].
 
 ## Prerequisites
 
