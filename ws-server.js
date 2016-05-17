@@ -9,7 +9,7 @@ wss.on('connection', function(ws){
 	wsList.push(ws);
 
 	ws.on('close', function(){
-		wsList.spilce(wsList.indexOf(ws),1);
+		wsList.splice(wsList.indexOf(ws),1);
 		console.log('WS closed!')
 	});
 
