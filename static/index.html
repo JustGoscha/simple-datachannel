@@ -92,7 +92,7 @@
     }
 
     var config = {"iceServers":[{"url":"stun:stun.l.google.com:19302"}]};
-    var connection = { 'optional': [{'DtlsSrtpKeyAgreement': true}, {'RtpDataChannels': true }] };
+    var connection = {};
 
     var peerConnection;
     var dataChannel;
@@ -104,17 +104,14 @@
         user2 = $("#connectTo").val();
         openDataChannel();
 
-        var sdpConstraints = {'mandatory':
-            {
-                'OfferToReceiveAudio': false,
-                'OfferToReceiveVideo': false
-            }
-        };
-        var offer = peerConnection.createOffer(function (sdp) {
+        var sdpConstraints = { offerToReceiveAudio: true,  offerToReceiveVideo: false }
+        peerConnection.createOffer(sdpConstraints).then(function (sdp) {
             peerConnection.setLocalDescription(sdp);
             sendNegotiation("offer", sdp);
             console.log("------ SEND OFFER ------");
-        }, null, sdpConstraints);
+        }, function (err) {
+            console.log(err)
+        });
 
     }
 
@@ -141,10 +138,6 @@
 
         dataChannel = peerConnection.createDataChannel("datachannel", {reliable: false});
 
-        dataChannel.onmessage = function(e){
-            console.log("DC from ["+user2+"]:" +e.data);
-            $('body').append(user2+': <div class="message from">'+e.data+'</div>')
-        }
         dataChannel.onopen = function(){
             console.log("------ DATACHANNEL OPENED ------")
             $("#sendform").show();
@@ -152,10 +145,18 @@
         dataChannel.onclose = function(){console.log("------ DC closed! ------")};
         dataChannel.onerror = function(){console.log("DC ERROR!!!")};
 
-        peerConnection.ondatachannel = function () {
+        peerConnection.ondatachannel = function (ev) {
             console.log('peerConnection.ondatachannel event fired.');
+            ev.channel.onopen = function() {
+                console.log('Data channel is open and ready to be used.');
+            };
+            ev.channel.onmessage = function(e){
+                console.log("DC from ["+user2+"]:" +e.data);
+                $('body').append(user2+': <div class="message from">'+e.data+'</div>')
+            }
         };
 
+        return peerConnection
     }
 
     function sendNegotiation(type, sdp){
@@ -165,8 +166,10 @@
     }
 
     function processOffer(offer){
-        openDataChannel();
-        peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
+        var peerConnection = openDataChannel();
+        peerConnection.setRemoteDescription(new RTCSessionDescription(offer)).catch(e => {
+            console.log(e)
+        });
 
         var sdpConstraints = {'mandatory':
             {
@@ -175,11 +178,14 @@
             }
         };
 
-        peerConnection.createAnswer(function (sdp) {
-            peerConnection.setLocalDescription(sdp);
-            sendNegotiation("answer", sdp);
-            console.log("------ SEND ANSWER ------");
-        }, null, sdpConstraints);
+        peerConnection.createAnswer(sdpConstraints).then(function (sdp) {
+            return peerConnection.setLocalDescription(sdp).then(function() {            
+                sendNegotiation("answer", sdp);
+                console.log("------ SEND ANSWER ------");
+            })
+        }, function(err) {
+            console.log(err)
+        });
         console.log("------ PROCESSED OFFER ------");
 
     };
@@ -192,7 +198,10 @@
     };
 
     function processIce(iceCandidate){
-        peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidate));
+        peerConnection.addIceCandidate(new RTCIceCandidate(iceCandidate)).catch(e => {
+            debugger
+            console.log(e)
+        })
     }
 
     </script>
